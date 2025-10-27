@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================
-# Smart SSH Setup Script v2.0 for GitHub
+# Smart SSH Setup Script v1.0 for GitHub
 # Author: Nihad Rasulzada
 # ==============================================
 
