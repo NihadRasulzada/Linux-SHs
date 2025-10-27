@@ -58,7 +58,7 @@ elif [[ "$current_branch" =~ ^docs/([0-9]+)- ]]; then
   issue_id="[#$BASH_REMATCH]"
 fi
 
-# 7. Staged diff-i götür
+# 7. Staged diff-i götür (bütün dəyişikliklər göndərilir)
 diff_content=$(git diff --cached)
 
 # 8. AI modelini run et və commit mesajını al
