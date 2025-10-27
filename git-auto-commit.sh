@@ -1,5 +1,7 @@
 #!/bin/bash
 
+MODEL_NAME="tavernari/git-commit-message:pro"
+
 # 1. Hazır branch-i götür
 current_branch=$(git symbolic-ref --short HEAD)
 if [[ -z "$current_branch" ]]; then
@@ -43,7 +45,7 @@ diff_content=$(git diff --cached)
 
 # 7. AI modelini run et və commit mesajını al
 echo "Generating commit message using AI..."
-commit_msg=$(echo "$diff_content" | ollama run tavernari/git-commit-message:pro)
+commit_msg=$(echo "$diff_content" | ollama run $MODEL_NAME)
 echo "AI commit message generated."
 
 # 8. Commit mesajına avtomatik prefix və issue ID əlavə et
@@ -67,3 +69,8 @@ if $remote_exists; then
 else
   echo "No remote 'origin' found. Push skipped."
 fi
+
+# 12. AI modelini stop et
+echo "Stopping AI model..."
+ollama stop $MODEL_NAME
+echo "AI model stopped."
