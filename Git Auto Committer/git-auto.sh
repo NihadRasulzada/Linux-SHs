@@ -2,17 +2,31 @@
 
 MODEL_NAME="tavernari/git-commit-message:pro"
 
-# 1. Git repository yoxdursa init et
-if [ ! -d ".git" ]; then
-  echo "No git repository found. Initializing git..."
-  git init
+# Script-in işlədiyi hazır path
+REPO_PATH=$(pwd)
+echo "Running git-auto in path: $REPO_PATH"
+
+# 1. Git repository yoxdursa soruş
+if [ ! -d "$REPO_PATH/.git" ]; then
+  read -p "No git repository found. Do you want to initialize git here? (y/n): " init_confirm
+  if [[ "$init_confirm" == "y" || "$init_confirm" == "Y" ]]; then
+    git init
+    echo "Git initialized."
+  else
+    echo "Git init skipped. Exiting."
+    exit 0
+  fi
 fi
 
 # 2. Origin remote yoxdursa terminaldan soruş və əlavə et
 if ! git remote get-url origin &>/dev/null; then
-  read -p "No remote 'origin' found. Enter remote URL: " REMOTE_URL
-  git remote add origin "$REMOTE_URL"
-  echo "Remote 'origin' set to $REMOTE_URL"
+  read -p "No remote 'origin' found. Enter remote URL (or leave empty to skip): " REMOTE_URL
+  if [[ -n "$REMOTE_URL" ]]; then
+    git remote add origin "$REMOTE_URL"
+    echo "Remote 'origin' set to $REMOTE_URL"
+  else
+    echo "Skipping remote setup."
+  fi
 fi
 
 # 3. Bütün dəyişiklikləri stage et
@@ -66,9 +80,13 @@ echo "---------------------------------"
 git commit -F <(echo "$commit_msg")
 echo "Commit done."
 
-# 12. Avtomatik push et
-git push -u origin "$current_branch"
-echo "Push done to branch '$current_branch'."
+# 12. Avtomatik push et əgər origin varsa
+if git remote get-url origin &>/dev/null; then
+  git push -u origin "$current_branch"
+  echo "Push done to branch '$current_branch'."
+else
+  echo "No remote 'origin' found. Push skipped."
+fi
 
 # 13. AI modelini stop et
 echo "Stopping AI model..."
