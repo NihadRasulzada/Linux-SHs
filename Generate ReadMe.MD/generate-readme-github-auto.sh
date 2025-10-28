@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # ---------------------------
 # Fully Automatic GitHub-ready README Generator (Enhanced)
 # ---------------------------
@@ -82,14 +81,14 @@ Project files content:
 $PROJECT_CONTENT"
 
     echo "Generating section: $SECTION ..."
-    SECTION_CONTENT=$(ollama run llama3.1:70b-instruct-q4_K_S -p "$PROMPT")
+    SECTION_CONTENT=$(ollama run llama3.1:70b-instruct-q4_K_S "$PROMPT")
     echo "## $SECTION" >> $README_TMP
     echo "$SECTION_CONTENT" >> $README_TMP
     echo "" >> $README_TMP
 done
 
 # 🔟 Add Table of Contents
-TOC=$(printf "%s\n" "${SECTIONS[@]}" | awk '{print "- ["$0"](#"tolower(gensub(/ /,"-","g",$0))")"}')
+TOC=$(printf "%s\n" "${SECTIONS[@]}" | gawk '{print "- ["$0"](#"tolower(gensub(/ /,"-","g",$0))")"}')
 FINAL_README="README.md"
 echo "# Table of Contents" > $FINAL_README
 echo "$TOC" >> $FINAL_README
@@ -109,7 +108,7 @@ rm $README_TMP
 
 # 1️⃣3️⃣ Refine final README
 FINAL_CONTENT=$(cat $FINAL_README)
-REFINED_CONTENT=$(ollama run llama3.1:70b-instruct-q4_K_S -p "Refine the following README.md to be professional, clear, bilingual (English & Azerbaijani), GitHub-ready:
+REFINED_CONTENT=$(ollama run llama3.1:70b-instruct-q4_K_S "Refine the following README.md to be professional, clear, bilingual (English & Azerbaijani), GitHub-ready:
 $FINAL_CONTENT")
 
 echo "$REFINED_CONTENT" > $FINAL_README

@@ -64,7 +64,12 @@ diff_content=$(git diff --cached)
 # 8. AI modelini run et və commit mesajını al
 echo "Generating commit message using AI..."
 commit_msg=$(echo "$diff_content" | ollama run $MODEL_NAME)
+
+# Remove Markdown code fences and excessive whitespace
+commit_msg=$(echo "$commit_msg" | sed 's/^```.*$//g' | sed 's/^```$//g' | sed '/^$/N;/^\n$/D' | awk 'NF' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
 echo "AI commit message generated."
+
 
 # 9. Commit mesajına avtomatik prefix və issue ID əlavə et
 if [[ -n "$prefix" ]]; then
