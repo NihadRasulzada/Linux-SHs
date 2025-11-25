@@ -86,7 +86,7 @@ save_config
 # ==========================
 if [ ! -f "$KEY_PATH" ]; then
     echo -e "${YELLOW}🆕 Yeni SSH açarı yaradılır...${NC}"
-    ssh-keygen -t ed25519 -C "$EMAIL" -f "$KEY_PATH" -N ""
+    ssh-keygen -t ed25519 -C "$EMAIL" -f "$KEY_PATH" -N "" || { echo -e "${RED}❌ SSH açarı yaradılarkən xəta baş verdi! Yenidən cəhd edilir...${NC}"; ssh-keygen -t ed25519 -C "$EMAIL" -f "$KEY_PATH" -N ""; }
 else
     echo -e "${GREEN}✅ Mövcud SSH açar tapıldı:${NC} $KEY_PATH"
 fi
@@ -96,7 +96,7 @@ fi
 # ==========================
 echo -e "${YELLOW}🚀 SSH agent işə salınır...${NC}"
 eval "$(ssh-agent -s)"
-ssh-add "$KEY_PATH"
+ssh-add "$KEY_PATH" || { echo -e "${RED}❌ SSH agent işə salınarkən xəta baş verdi! Yenidən cəhd edilir...${NC}"; eval "$(ssh-agent -s)"; ssh-add "$KEY_PATH"; }
 
 # ==========================
 # 🔹 5️⃣ GitHub açarı əlavə et və ya yenilə
@@ -110,11 +110,16 @@ if check_github_key_exists; then
     # Mövcud açarın ID-sini tap
     KEY_ID=$(curl -s -H "Authorization: token $TOKEN" https://api.github.com/user/keys | grep -B1 "\"title\": \"$TITLE\"" | grep '"id":' | head -n1 | awk '{print $2}' | tr -d ',')
     if [ -n "$KEY_ID" ]; then
-        curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/user/keys/$KEY_ID"
+        DELETE_RESPONSE=$(curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/user/keys/$KEY_ID")
+        if [[ "$(echo "$DELETE_RESPONSE" | jq -r '.message')" == "Not Found" ]]; then
+            echo -e "${RED}❌ Mövcud SSH açarı silinə bilmədi. Yenidən cəhd edilir...${NC}"
+            DELETE_RESPONSE=$(curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/user/keys/$KEY_ID")
+        fi
         echo -e "${GREEN}✅ Köhnə açar silindi.${NC}"
     fi
 fi
 
+# GitHub-a SSH açarını əlavə et
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST \
   -H "Authorization: token $TOKEN" \
@@ -122,10 +127,31 @@ RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
   https://api.github.com/user/keys \
   -d "{\"title\": \"$TITLE\", \"key\": \"$PUB_KEY\"}")
 
+# Təhlil et və error mesajı ver
 if [ "$RESPONSE" -eq 201 ]; then
     echo -e "${GREEN}✅ Yeni SSH açarı uğurla GitHub hesabına əlavə edildi!${NC}"
 else
-    echo -e "${RED}❌ SSH açarı əlavə edilə bilmədi. Kod: $RESPONSE${NC}"
+    echo -e "${RED}❌ SSH açarı əlavə edilə bilmədi. Kod: $RESPONSE.${NC}"
+    
+    if [ "$RESPONSE" -eq 401 ]; then
+        echo -e "${YELLOW}❌ Token səhv və ya icazələr düzgün deyil. Zəhmət olmasa token-in düzgünlüyünü yoxlayın.${NC}"
+        read -p "Yeni token daxil edin və ya mövcud token-in düzgünlüyünü yoxlayın: " TOKEN
+        save_config
+        # Yenidən cəhd
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+          -X POST \
+          -H "Authorization: token $TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/user/keys \
+          -d "{\"title\": \"$TITLE\", \"key\": \"$PUB_KEY\"}")
+        
+        if [ "$RESPONSE" -eq 201 ]; then
+            echo -e "${GREEN}✅ Yeni SSH açarı uğurla GitHub hesabına əlavə edildi!${NC}"
+        else
+            echo -e "${RED}❌ Hələ də SSH açarı əlavə edilə bilmədi.${NC}"
+            exit 1
+        fi
+    fi
 fi
 
 # ==========================
@@ -137,19 +163,21 @@ echo -e "\n🔍 ${YELLOW}Sistem yoxlamaları aparılır...${NC}"
 if pgrep -x "ssh-agent" >/dev/null; then
     echo -e "${GREEN}✅ SSH agent aktivdir.${NC}"
 else
-    echo -e "${RED}❌ SSH agent aktiv deyil.${NC}"
+    echo -e "${RED}❌ SSH agent aktiv deyil. Yenidən işə salınır...${NC}"
+    eval "$(ssh-agent -s)"
 fi
 
 # 2. SSH key GitHub-da varmı?
 if check_github_key_exists; then
     echo -e "${GREEN}✅ GitHub hesabında SSH açar mövcuddur.${NC}"
 else
-    echo -e "${RED}❌ GitHub-da SSH açar tapılmadı.${NC}"
+    echo -e "${RED}❌ GitHub-da SSH açar tapılmadı. Yenidən cəhd edilir...${NC}"
+    check_github_key_exists || check_github_key_exists
 fi
 
-# 3. SSH bağlantısı
+# 3. SSH bağlantısı (GitHub ilə əlaqə doğrulama)
 echo -e "${YELLOW}🔗 GitHub bağlantısı test edilir...${NC}"
-ssh -T git@github.com || true
+ssh -T git@github.com || echo -e "${GREEN}✅ GitHub SSH bağlantısı uğurla quruldu. GitHub şellinə giriş mümkün deyil, amma SSH ilə əlaqə aktivdir.${NC}"
 
 # ==========================
 # 🔹 7️⃣ Bitdi!

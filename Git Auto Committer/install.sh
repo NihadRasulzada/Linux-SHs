@@ -23,7 +23,7 @@ echo "$SCRIPT_NAME installed to $SCRIPT_PATH"
 
 # 3. PATH-də olub olmadığını yoxla, əgər yoxdursa əlavə et
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-  echo "Adding $INSTALL_DIR to PATH in .bashrc and .zshrc..."
+  echo "Adding $INSTALL_DIR to PATH in .bashrc, .zshrc, and Fish config..."
 
   # Bash üçün
   if [ -f "$HOME/.bashrc" ]; then
@@ -37,9 +37,22 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
       echo "export PATH=\$PATH:$INSTALL_DIR" >> "$HOME/.zshrc"
   fi
 
+  # Fish üçün
+  if [ -f "$HOME/.config/fish/config.fish" ]; then
+    grep -qxF "set -U fish_user_paths $INSTALL_DIR \$fish_user_paths" "$HOME/.config/fish/config.fish" || \
+      echo "set -U fish_user_paths $INSTALL_DIR \$fish_user_paths" >> "$HOME/.config/fish/config.fish"
+  fi
+
   # PATH-i bu sessiyaya əlavə et
   export PATH=$PATH:$INSTALL_DIR
 fi
 
+# Fish üçün terminalı yeniləmək
+echo "Reloading Fish config..."
+if command -v fish &> /dev/null; then
+  exec fish
+fi
+
 echo "Installation complete. You can now run '$SCRIPT_NAME' from any directory."
 echo "If new terminal session is opened, PATH will be automatically set."
+
